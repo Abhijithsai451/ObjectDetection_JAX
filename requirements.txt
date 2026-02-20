@@ -1,0 +1,9 @@
+jax
+jax-metal
+grain
+jaxlib
+flax
+optax
+tensorflow
+tensorflow_datasets
+ml_collections

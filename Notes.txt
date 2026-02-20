@@ -1,0 +1,207 @@
+------------------------------------------------------------------------------------------------------------------------
+JAX - Basics
+------------------------------------------------------------------------------------------------------------------------
+JAX is a library used for functional programming. It stands for Just another python library for XLA (accelerated linear algebra).
+JAX is used for fast computation of mathematical functions.
+It is similar to NumPy.
+All the numpy function can be replaced with jax function.
+Along with that, jax also provides auto-differentiation.
+One major difference is that jax arrays are immutable.
+It is heavily used for GPU computation.
+It also uses the JIT compilation.
+There are four major transformation functions in jax. they are grad (for auto-differentiation), jit (for just in time
+    compilation), vmap(for vectorization), pmap(for parallel computation).
+    grad: Auto differentiation. It takes the derivative of a function using reverse mode differentiation.
+        Reverse mode differentiation is a method of computing derivatives by repeatedly applying the chain rule to the
+        partial derivatives.
+    jit: When you jit a function, jax traces teh operations and hands them tot he XLA compiler. XLA performs the
+        operation fusion by combining the multiple steps into one to save memory bandwidth and optimizes the execution
+        for the specific hardware.
+    vmap: Instead of manually writing loops to process a batch of data, vmap automatically vectorizes the function. It
+        pushes the loop down into the library level, which is faster than a python 'for' loop.
+    pmap: This allows to map a function across multiple devices for lightning - fast distributed training.
+Unlike numpy, jax uses a global state for random numbers generation. Jax needs a state to be passed explicitly.
+------------------------------------------------------------------------------------------------------------------------
+Numpy vs JAX vs PyTorch
+------------------------------------------------------------------------------------------------------------------------
+import numpy as np
+
+# Creation
+x = np.array([1, 2, 3])
+x = np.zeros((2, 3))
+x = np.ones_like(another_array)
+x = np.arange(0, 10, 2)
+x = np.linspace(0, 1, 5)
+
+# Manipulation
+x = np.reshape(x, (5, 1))
+x = np.transpose(x)
+x = np.concatenate([x, y], axis=0)
+x = np.stack([x, y], axis=1)
+x = np.expand_dims(x, axis=0)
+x = np.squeeze(x)
+
+# Math & Reductions
+z = np.add(x, y)      # or x + y
+z = np.matmul(x, y)   # or x @ y
+res = np.sum(x, axis=0)
+res = np.mean(x)
+res = np.argmax(x, axis=-1)
+
+# Mutation (In-place)
+x[0] = 10
+
+# Random
+np.random.seed(42)
+r = np.random.normal(0, 1, size=(3, 3))
+
+# Boolean Masking & Searching
+mask = x > 0.5
+values = x[mask]
+indices = np.where(x > 0.5)
+clamped = np.clip(x, min_val, max_val)
+
+# Advanced Indexing & Broadcasting
+row_indices = np.array([0, 1])
+col_indices = np.array([1, 2])
+selected = x[row_indices, col_indices]
+x_new_axis = x[:, np.newaxis] # Add dimension for broadcasting
+
+# Sorting & Searching
+sorted_x = np.sort(x, axis=0)
+sorted_idx = np.argsort(x)
+top_k_idx = np.argpartition(x, -k)[-k:]
+
+# Linear Algebra (linalg)
+norm = np.linalg.norm(x)
+inv = np.linalg.inv(matrix)
+eigenvalues, eigenvectors = np.linalg.eig(matrix)
+solution = np.linalg.solve(A, b)
+
+# Data Persistence
+np.save('data.npy', x)
+x = np.load('data.npy')
+------------------------------------------------------------------------------------------------------------------------
+import jax
+import jax.numpy as jnp
+from jax import lax
+
+# Creation (Same as NumPy)
+x = jnp.array([1, 2, 3])
+x = jnp.zeros((2, 3))
+x = jnp.arange(0, 10, 2)
+
+# Manipulation (Same as NumPy)
+x = jnp.reshape(x, (5, 1))
+x = jnp.concatenate([x, y], axis=0)
+x = jnp.expand_dims(x, axis=0)
+
+# Math & Reductions (Same as NumPy)
+z = jnp.dot(x, y)
+res = jnp.sum(x, axis=0)
+res = jnp.argmax(x, axis=-1)
+
+# Mutation (Functional/Immutable - returns a NEW array)
+# You cannot do x[0] = 10
+x = x.at[0].set(10)
+x = x.at[1].add(5)
+
+# Random (Explicit State Management)
+key = jax.random.PRNGKey(42)
+key, subkey = jax.random.split(key)
+r = jax.random.normal(subkey, shape=(3, 3))
+
+# Transformations (Unique to JAX)
+f_jit = jax.jit(my_func)
+f_vmap = jax.vmap(my_func)
+f_grad = jax.grad(my_func)
+
+# Boolean Masking (Standard)
+indices = jnp.where(x > 0.5)
+clamped = jnp.clip(x, min_val, max_val)
+
+# Advanced Indexing (Must use .at for updates)
+# To gather values:
+values = x[jnp.array([0, 2, 4])]
+
+# Structured Control Flow (Crucial for @jit)
+# Standard 'if' and 'for' often fail inside jit; use these:
+result = lax.cond(pred, true_fun, false_fun, operand)
+result = lax.fori_loop(lower, upper, body_fun, init_val)
+result = lax.while_loop(cond_fun, body_fun, init_val)
+
+# Parallelism (Unique to JAX)
+# Map a function across multiple GPUs/TPUs
+parallel_results = jax.pmap(my_func)(batch_of_data)
+
+# Low-level XLA ops (jax.lax)
+# Faster, less overhead than jnp for some operations
+z = lax.add(x, y)
+z = lax.dot(matrix1, matrix2)
+------------------------------------------------------------------------------------------------------------------------
+import torch
+import torch.nn.functional as F
+
+# Creation
+x = torch.tensor([1, 2, 3])
+x = torch.zeros((2, 3))
+x = torch.ones_like(another_tensor)
+x = torch.arange(0, 10, 2)
+
+# Manipulation
+x = x.view(5, 1)          # Preferred over reshape
+x = x.t()                 # Transpose
+x = torch.cat([x, y], dim=0)
+x = torch.stack([x, y], dim=1)
+x = torch.unsqueeze(x, dim=0)
+x = torch.squeeze(x)
+
+# Math & Reductions
+z = torch.add(x, y)       # or x + y
+z = torch.matmul(x, y)    # or x @ y
+res = torch.sum(x, dim=0)
+res = torch.mean(x)
+res = torch.argmax(x, dim=-1)
+
+# Mutation (In-place)
+x[0] = 10
+x.add_(5)                 # Underscore denotes in-place
+
+# Device Management
+x = x.to('cuda')          # Move to GPU
+x = x.to('cpu')           # Move to CPU
+
+# Random
+torch.manual_seed(42)
+r = torch.randn(3, 3)
+
+# Boolean Masking & Searching
+mask = x > 0.5
+values = torch.masked_select(x, mask)
+indices = torch.where(x > 0.5)
+clamped = torch.clamp(x, min=0, max=1)
+
+# Advanced Indexing (Gather/Scatter)
+# Useful for NLP and RL to pick specific indices from a batch
+gathered = torch.gather(x, dim=1, index=indices)
+# Update x at indices with values (in-place)
+x.scatter_(dim=1, index=indices, src=values)
+
+# Top-K (Very common in PyTorch)
+values, indices = torch.topk(x, k=5, dim=-1)
+
+# Autograd (The heart of PyTorch)
+x = torch.randn(3, requires_grad=True)
+y = x * 2
+y.sum().backward()
+print(x.grad) # Access the calculated gradient
+
+# Neural Network Functionals (torch.nn.functional)
+# Instead of layers, use raw functions
+probs = F.softmax(logits, dim=-1)
+loss = F.cross_entropy(logits, targets)
+activated = F.relu(x)
+
+# Serialization
+torch.save(model.state_dict(), 'model.pth')
+------------------------------------------------------------------------------------------------------------------------
