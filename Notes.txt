@@ -205,3 +205,118 @@ activated = F.relu(x)
 # Serialization
 torch.save(model.state_dict(), 'model.pth')
 ------------------------------------------------------------------------------------------------------------------------
+Grain
+------------------------------------------------------------------------------------------------------------------------
+Key Features:
+Flexibility for highly customized data preparation workflows.
+Deterministic for reproducibility, debugging, and consistent experimental results.
+Resilient to preemptions for easy checkpointing.
+
+* It is a CPU based data processing. It prepares data in batches and processes them in parallel and supply it to the
+    accelerators. Not every system is suitable for this but this is the default setting in Grain.
+------------------------------------------------------------------------------------------------------------------------
+DataLoader: Class
+* This has three abstractions. DataSource, Sampler, Transformations.
+* This will automatically manages the launching and managing of the child procesess to parallelize the processing of input
+    data, (including sharding, shuffling), collection output and providing the batched data for the model consumption.
+data_loader = grain.DataLoader(
+    data_source = source,
+    sampler = index_sampler,
+    operations = transformations,
+    worker_count = 4)
+
+Grain DataSources:
+1. ArrayRecord:
+        data_source = ArrayRecord(paths = ['data.arrayrecord']
+2. Parquet:
+        data_source = Parquet(path = ['data.parquet'])
+3. TFDatasets:
+        data_source = tfds.data_source('imagenet_a', split= "train")
+4. Custom DataSource:
+   * First we need to ensure that the data source is pickleable. The data sources will be pickled and sent off to child
+        processes.
+   * Close file handlers- create data source as context manager that closes its open file handles.
+
+Grain Samplers:
+1. IndexSampler:
+        sampler = grain.IndexSampler(
+        num_records = 20, # limits the results
+        num_epochs = 2,
+        shard_options = grain.ShardOptions(
+                            shard_index = 0, shard_count = 1,
+                            drop_remainder = True),
+        shuffle = True,
+        seed = 42
+        )
+for record_metadata in sampler:
+    print(record_metadata)
+
+Grain Transformations:
+1. Map:
+    class PlusOne(grain.transforms.Map):
+        def map(self, x: int) -> int:
+            return x + 1
+    plus_one = PlusOne()
+2. Filter: transforms the dictionaries to lists
+    class FlatMapTransformer(grain.experimental.FlatMapTransform):
+        def flat_map(self, x):
+            for val in x:
+                yield val
+
+    class OnlyWordElements(grain.transforms.Filter):
+        def filter(self,element: int)-> bool:
+            word = 'on'
+            return word in element
+    word_filter = OnlyWordElements()
+3. Batch:
+    batching = grain.transforms.Batch(batch_size = 4, drop_remainder = True)
+
+DataLoader brings it all together.
+    transformations = [plus_one, word_filter, words, batching]
+    data_loader = grain.DataLoader(data_source = source,
+    sampler = index_sampler,
+    operations = transformations,
+    worker_count = 4)
+
+    for x in data_loader:
+        print(x)
+------------------------------------------------------------------------------------------------------------------------
+Dataset API: class
+    this utilizes a chaining syntax to create a data transformation steps.
+    provides more general type of transformation tools like dataset mixing, and great control over executions.
+    It preserves random access capabilities even after transformations.
+    Used to debug the data elements at specific positions without processing the entire dataset.
+
+dataset = grain.MapDataset(source([0,1,2,3,4,5,6,7])
+            .shuffle(seed=42)
+            .map(lambda x:x*10)
+            .batch(batch_size = 2)
+print(list(dataset))
+
+------------------------------------------------------------------------------------------------------------------------
+Grain Data sources:
+Same datasources as in data loaders
+
+Grain Data Transformations:
+    Shuffle, Map,Filter, to_iter_dataset, Batch
+* we need to convert the dataset to "to_iter_dataset" if we have to use the batching after filter. this converts the data
+   to an iterator rather than the random acess dataset.
+
+
+dataset = (
+    grain_source
+    .shuffle(seed=42)
+    .map(lambda x:x['title'].decode('utf-8'))
+    .filter(lambda x: "pandas" in x.lower())
+    .to_iter_dataset()
+    .batch(batch_size = 20)
+print(list(dataset))
+
+Grain has compatibility with Orbax for the data checkpointing.
+import orbax.checkpoin as ocp
+mngr = ocp.CheckpointManager(checkpoint_dir = "checkpoint_dir")
+mngr.save(
+        step = 1, arge = grain.checkpoint.CheckpointSave(dataset_iter),
+        force = True)
+
+mngr.wait_until_finished()

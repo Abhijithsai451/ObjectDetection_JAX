@@ -9,5 +9,17 @@ logger:
   level: "INFO"
 
 data:
-  dataset_name : 'cifar10'
+  dataset_name : 'cifar10' # alternative is mnit, imagenet_a
+  image_height : 32 # Imagenet_a is 224
+  image_width : 32 # Imagenet_a is 224
+  num_classes : 10 # 1000 for imagenet
   seed: 42
+  batch_size: 64
+  data_dir: 'data/'
+
+model:
+  layer_sizes: [784, 512, 512, 10]
+  step_size : 0.01
+  num_epochs: 10
+  batch_size : 128
+  n_targets: 10

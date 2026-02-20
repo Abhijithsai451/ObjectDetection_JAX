@@ -1,8 +1,12 @@
+import optax
+
 from configuration.config_parser import Config, get_args
 from configuration.logger_config import setup_logger
 import jax
+import flax as nnx
 
-from dataloader.data_imports import import_data
+from data_imports import  get_data
+from models import ModelFactory
 
 
 def main():
@@ -14,8 +18,12 @@ def main():
     logger.info(jax.devices())
 
     # Importing the data
-    train, test, valid = import_data(config)
+    train, test, valid = get_data(config)
 
+    rngs = nnx.Rngs(42)
+    model_type = "DETR"  # Toggle to "EfficientDet" for the other side of the duel
+    model = ModelFactory.create(model_type, num_classes=1000, rngs=rngs)
+    optimizer = nnx.Optimizer(model, optax.adamw(1e-4))
 
 
 

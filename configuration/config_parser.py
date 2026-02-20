@@ -23,12 +23,5 @@ def get_args():
     parser.add_argument('--config', type=str, default='config.yaml',
                         help='Name of the config file in the config/ folder')
     args = parser.parse_args()
-    #config_path = os.path.join('config', args.config)
     config_path = args.config
     return config_path
-
-"""
-args = get_args()
-config_path = os.path.join('config', args.config)
-cfg = Config(config_path)
-"""
