@@ -1,16 +1,23 @@
-# This is a sample Python script.
+from configuration.config_parser import Config, get_args
+from configuration.logger_config import setup_logger
+import jax
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
+from dataloader.data_imports import import_data
 
 
-# Press the green button in the gutter to run the script.
+def main():
+    config_path = get_args()
+    config = Config(config_path)
+
+    # Logger Setup
+    logger = setup_logger(config)
+    logger.info(jax.devices())
+
+    # Importing the data
+    train, test, valid = import_data(config)
+
+
+
+
 if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    main()

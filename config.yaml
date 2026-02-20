@@ -1,0 +1,13 @@
+project_name: "DETR_vs_EfficientDET"
+logger:
+  log_dir: "results/logs"
+  tensorboard_dir: "results/runs"
+  ckpt_dir: "results/checkpoints"
+  use_tensorboard: false
+  save_every: 10
+  log_file: "training.log"
+  level: "INFO"
+
+data:
+  dataset_name : 'cifar10'
+  seed: 42
